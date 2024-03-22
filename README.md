@@ -146,3 +146,122 @@ _ => ("HTTP/1.1 404 NOT FOUND", "404.html"),
 ```
 
 Jika `request_line` tidak cocok dengan salah satu dari dua pola di atas, maka `status_line` diatur ke `"HTTP/1.1 404 NOT FOUND"` dan `path_resource` diatur ke `"404.html"`.
+
+### Milestone 5: Multithreaded Server
+
+#### Pada berkas `src/main.rs`
+
+```rust
+use advprog_modul6::ThreadPool;
+```
+
+Baris ini mengimpor `ThreadPool` dari paket `advprog_modul6`.
+
+```rust
+let pool = ThreadPool::new(4);
+```
+
+Baris ini membuat `ThreadPool` baru dengan empat thread.
+
+```rust
+pool.execute(|| {
+  handle_connection(stream);
+});
+```
+
+Baris ini menjalankan method `handle_connection` dalam thread `pool`. Method ini akan dipanggil dengan `stream` sebagai argumen. `execute` mengambil closure sebagai argumen, yang dalam hal ini adalah `|| { handle_connection(stream); }`. Sehingga eksekusi method tersebut dapat menangani secara bersamaan dengan menggunakan thread yang tersedia pada `pool`.
+
+#### Pada berkas `src/lib.rs`
+
+```rust
+pub struct ThreadPool {
+    #[allow(dead_code)]
+    workers: Vec<Worker>,
+    sender: mpsc::Sender<Job>,
+}
+```
+
+Ini adalah definisi dari struktur `ThreadPool`. `ThreadPool` memiliki dua field: `workers` yang merupakan vektor dari `Worker` dan `sender` yang merupakan sender dari channel multiple-producer single-consumer (mpsc).
+
+```rust
+type Job = Box<dyn FnOnce() + Send + 'static>;
+```
+
+Ini adalah definisi dari tipe Job. Job adalah sebuah closure yang dapat dipanggil sekali (`FnOnce`), dapat dikirim antar thread (`Send`), dan memiliki lifetime `'static` (bisa hidup selama program berjalan).
+
+```rust
+pub fn new(size: usize) -> ThreadPool {
+    assert!(size > 0);
+    let (sender, receiver) = mpsc::channel();
+    let receiver = Arc::new(Mutex::new(receiver));
+    let mut workers = Vec::with_capacity(size);
+    for id in 0..size {
+        workers.push(Worker::new(id, Arc::clone(&receiver)));
+    }
+    ThreadPool { workers, sender }
+}
+```
+
+Ini adalah method `new` yang merupakan _constructor_ untuk `ThreadPool`. Method ini menerima ukuran pool (jumlah thread) sebagai argumen, membuat channel `mpsc`, membuat `Worker` sejumlah ukuran pool, dan mengembalikan instance `ThreadPool`.
+
+- `assert!(size > 0);`  
+  Baris ini menyatakan bahwa ukuran ThreadPool harus lebih besar dari 0. Jika ukurannya tidak lebih besar dari 0, program akan panik dan berhenti.
+- `let (sender, receiver) = mpsc::channel();`  
+  Baris ini membuat _channel_ multiple-producer, single-consumer (mpsc) yang baru. _Channel_ ini memungkinkan beberapa thread untuk mengirim data ke satu receiver.
+- `let receiver = Arc::new(Mutex::new(receiver));`  
+  Baris ini membungkus `receiver` dengan Mutex dan kemudian Arc. Mutex memungkinkan kita untuk memiliki akses yang dapat diubah-ubah ke data dari satu thread pada suatu waktu. Arc adalah _thread-safe reference-counting_.
+- `let mut workers = Vec::with_capacity(size);`  
+  Baris ini membuat vektor yang dapat diubah dengan kapasitas yang sama dengan ukuran ThreadPool.
+- `for loop`  
+  Membuat `Worker` _instance_, masing-masing dengan id unik dan _clone_ dari Arc receiver, dan memasukkan kedalam vector Worker.
+
+```rust
+pub fn execute<F>(&self, f: F)
+where
+    F: FnOnce() + Send + 'static,
+{
+    let job = Box::new(f);
+    self.sender.send(job).unwrap();
+}
+```
+
+Method execute ini adalah method publik yang menerima satu argumen `f`. Argumen `f` ini adalah sebuah closure yang memenuhi trait bounds FnOnce, Send, dan 'static. FnOnce berarti closure ini hanya bisa dipanggil sekali, Send berarti closure ini bisa dikirim ke thread lain, dan 'static berarti closure ini memiliki lifetime 'static (bisa hidup selama program berjalan).
+
+- `let job = Box::new(f);`  
+  Closure `f` dibungkus dalam `Box` untuk membuat sebuah `Job`. `Box` digunakan untuk menyimpan data di heap dan memberikan pointer ke data tersebut.
+- `self.sender.send(job).unwrap();`
+  `Job` yang telah dibuat kemudian dikirim melalui `sender` ke receiver yang ada di thread lain. `unwrap()` digunakan untuk mengambil hasil dari operasi `send`. Jika operasi send gagal, program akan panic dan berhenti.
+
+```rust
+struct Worker {
+    #[allow(dead_code)]
+    id: usize,
+    #[allow(dead_code)]
+    thread: thread::JoinHandle<()>,
+}
+```
+
+Ini adalah definisi dari struktur `Worker`. `Worker` memiliki dua field: id yang merupakan identifikasi unik untuk setiap `Worker`, dan thread yang merupakan handle untuk thread yang dijalankan oleh `Worker`.
+
+```rust
+impl Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        let thread = thread::spawn(move || loop {
+            let job = receiver.lock().unwrap().recv().unwrap();
+            println!("Worker {id} got a job; executing.");
+            job();
+        });
+        Worker { id, thread }
+    }
+}
+```
+
+Kode tersebut adalah implementasi dari method `new` pada `struct Worker` dalam Rust. Method ini digunakan untuk membuat instance baru dari `Worker`.
+
+- Fungsi `new` ini adalah fungsi yang menerima dua argumen, `id` dengan tipe `usize` dan `receiver` dengan tipe `Arc<Mutex<mpsc::Receiver<Job>>>`, dan mengembalikan instance `Worker`.
+- `let thread = thread::spawn(move || loop {})`  
+  Di sini, sebuah thread baru di-spawn dengan closure yang berisi loop tak terbatas
+- `let job = receiver.lock().unwrap().recv().unwrap();`  
+  `lock` adalah metode yang digunakan untuk mendapatkan akses ke data yang dilindungi oleh Mutex. `recv` adalah metode yang digunakan untuk menerima nilai dari channel. `recv` akan mengembalikan Result yang baik berisi nilai yang diterima atau `RecvError` jika channel pengirim telah ditutup dan tidak ada nilai lagi yang bisa diterima.
+- `job()`  
+  Ini adalah pemanggilan dari Job yang telah diterima. Job ini adalah closure yang telah dikirim melalui channel.
