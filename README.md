@@ -65,4 +65,35 @@ Pada bagian ini, membuat variabel baru `http_request` dengan untuk menampung has
 println!("Request: {:#?}", http_request);
 ```
 
-Terakhir, vektor http_request yang telah diproses dicetak ke konsol menggunakan `println!()`. Opsi pemformatan `#?` digunakan untuk mencetak vektor secara bagus, menampilkan setiap elemen pada baris terpisah.'
+Terakhir, vektor http_request yang telah diproses dicetak ke konsol menggunakan `println!()`. Opsi pemformatan `#?` digunakan untuk mencetak vektor secara bagus, menampilkan setiap elemen pada baris terpisah.
+
+### Milestone 2: Returning HTML Refleksi
+
+```rust
+let status_line = "HTTP/1.1 200 OK";
+```
+
+Baris ini mendefinisikan sebuah variabel `status_line` yang merepresentasikan baris status dari respons HTTP. Dalam kasus ini, ini adalah respons `HTTP/1.1` yang berhasil yang ditunjukkan oleh kode status `200 OK`.
+
+```rust
+let contents = fs::read_to_string("hello.html").unwrap();
+let length = contents.len();
+```
+
+Pada kode diatas membaca isi berkas `hello.html` menjadi sebuah string dengan menggunakan method `read_to_string` dari modul `fs`. Metode `unwrap()` digunakan untuk mendapatkan nilai `Result`, dan jika ada _error_ program akan panic. Varibel `length` sebagai panjang dari content berkas html.
+
+```rust
+let response = format!("{status_line}\r\nContent-Length:{length}\r\n\r\n{contents}");
+```
+
+Baris ini menggunakan `format!` untuk membuat string respons HTTP. `response` mencangkup `status_line`, `Content-Length` header, dan `contents` dari berkas `hello.html`.
+
+> Perhatikan bahwa \r\n digunakan untuk memisahkan header dan isi dalam respons HTTP (CRLF End Line Sequence).
+
+```rust
+stream.write_all(response.as_bytes()).unwrap();
+```
+
+Terakhir, baris ini menulis respons HTTP ke `stream`. Method `write_all` mencoba menulis seluruh potongan byte ke `stream`. Method `as_bytes` digunakan untuk mengubah string respons menjadi byte.
+
+<img align="center" src="assets\images\commit2.png" alt="Commit 2 screen capture"/>
