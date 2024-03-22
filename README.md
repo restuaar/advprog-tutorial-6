@@ -265,3 +265,7 @@ Kode tersebut adalah implementasi dari method `new` pada `struct Worker` dalam R
   `lock` adalah metode yang digunakan untuk mendapatkan akses ke data yang dilindungi oleh Mutex. `recv` adalah metode yang digunakan untuk menerima nilai dari channel. `recv` akan mengembalikan Result yang baik berisi nilai yang diterima atau `RecvError` jika channel pengirim telah ditutup dan tidak ada nilai lagi yang bisa diterima.
 - `job()`  
   Ini adalah pemanggilan dari Job yang telah diterima. Job ini adalah closure yang telah dikirim melalui channel.
+
+### Bonus Reflection
+
+Sebenarnya lebih disarankan untuk menggunakan metode `build` yang mengembalikan _instance_ `Result` daripada `new` saat membuat instansiasi ThreadPool. Alasannya adalah karena dengan menggunakan `build`, kita dapat menangani situasi di mana angka yang diberikan untuk ukuran thread pool terlalu kecil yang menyebabkan kesalahan. Oleh karena itu, rekomendasi adalah untuk mengganti metode `new` dengan `build`, yang mengembalikan `Result`, dan kemudian pemanggilan dapat menggunakan `unwrap()` untuk menangani hasilnya.
