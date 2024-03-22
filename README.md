@@ -6,7 +6,7 @@
 
 ## Module 6 - Concurrency
 
-### Milestone 1: Single Threaded Web Server Refleksi
+### Milestone 1: Single Threaded Web Server
 
 ```rust
 fn main() {
@@ -67,7 +67,7 @@ println!("Request: {:#?}", http_request);
 
 Terakhir, vektor http_request yang telah diproses dicetak ke konsol menggunakan `println!()`. Opsi pemformatan `#?` digunakan untuk mencetak vektor secara bagus, menampilkan setiap elemen pada baris terpisah.
 
-### Milestone 2: Returning HTML Refleksi
+### Milestone 2: Returning HTML
 
 ```rust
 let status_line = "HTTP/1.1 200 OK";
@@ -114,6 +114,35 @@ let (status_line, path_resource) = if request_line == "GET / HTTP/1.1" {
 };
 ```
 
-Kode diatas memeriksa apakah `request_line` sama dengan `"GET / HTTP/1.1"`, yang berarti client meminta halaman utama (`/`). Jika ya, maka `status_line` diatur ke`"HTTP/1.1 200 OK"` dan `path_resource` diatur ke "hello.html". Jika tidak, maka status_line diatur ke `"HTTP/1.1 404 NOT FOUND"` dan `path_resource` diatur ke `"404.html"`. Ini berarti bahwa jika client meminta sumber daya lain selain halaman utama, server akan merespons dengan status 404 dan halaman error 404.
+Kode diatas memeriksa apakah `request_line` sama dengan `"GET / HTTP/1.1"`, yang berarti _client_ meminta halaman utama (`/`). Jika ya, maka `status_line` diatur ke`"HTTP/1.1 200 OK"` dan `path_resource` diatur ke "hello.html". Jika tidak, maka status*line diatur ke `"HTTP/1.1 404 NOT FOUND"` dan `path_resource` diatur ke `"404.html"`. Ini berarti bahwa jika \_client* meminta sumber daya lain selain halaman utama, server akan merespons dengan status 404 dan halaman error 404.
 
 <img align="center" src="assets\images\commit3.png" alt="Commit 3 screen capture"/>
+
+### Milestone 4: Simulation Slow Response
+
+```rust
+let (status_line, path_resource) = match &request_line[..] {__}
+```
+
+Baris ini memulai blok `match` pada `request_line`, yang merupakan string yang mewakili baris permintaan HTTP. `&request_line[..]` adalah cara untuk mendapatkan slice yang merujuk ke seluruh string dan mencocokannya dengan pola yang telah didefinisikan.
+
+```rust
+"GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "hello.html"),
+```
+
+Jika `request_line` sama dengan `"GET / HTTP/1.1"`, yang berarti _client_ meminta halaman utama (/), maka `status_line` diatur menjadi `"HTTP/1.1 200 OK"` dan `path_resource` diatur ke `"hello.html"`.
+
+```rust
+"GET /sleep HTTP/1.1" => {
+    thread::sleep(Duration::from_secs(10));
+    ("HTTP/1.1 200 OK", "hello.html")
+}
+```
+
+Jika `request_line` sama dengan `"GET /sleep HTTP/1.1"`, server akan menunda prosesnya selama 10 detik menggunakan `thread::sleep(Duration::from_secs(10))`. Setelah itu, `status_line` diatur ke `"HTTP/1.1 200 OK"` dan path_resource diatur ke `"hello.html"`.
+
+```rust
+_ => ("HTTP/1.1 404 NOT FOUND", "404.html"),
+```
+
+Jika `request_line` tidak cocok dengan salah satu dari dua pola di atas, maka `status_line` diatur ke `"HTTP/1.1 404 NOT FOUND"` dan `path_resource` diatur ke `"404.html"`.
