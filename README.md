@@ -97,3 +97,23 @@ stream.write_all(response.as_bytes()).unwrap();
 Terakhir, baris ini menulis respons HTTP ke `stream`. Method `write_all` mencoba menulis seluruh potongan byte ke `stream`. Method `as_bytes` digunakan untuk mengubah string respons menjadi byte.
 
 <img align="center" src="assets\images\commit2.png" alt="Commit 2 screen capture"/>
+
+### Milestone 3: Validating Request And Selectively Responding
+
+```rust
+let request_line = buf_reader.lines().next().unwrap().unwrap();
+```
+
+Kode diatas akan membaca baris pertama dari `buf_reader`. `lines()` menghasilkan iterator atas baris dalam input. `next()` mengambil baris pertama dari iterator tersebut. `unwrap()` pertama digunakan untuk mendapatkan Result dari `next()`, dan `unwrap()` kedua digunakan untuk mendapatkan Result dari `lines()`. Jika ada error pada salah satu tahap ini, program akan panic.
+
+```rust
+let (status_line, path_resource) = if request_line == "GET / HTTP/1.1" {
+    ("HTTP/1.1 200 OK", "hello.html")
+} else {
+    ("HTTP/1.1 404 NOT FOUND", "404.html")
+};
+```
+
+Kode diatas memeriksa apakah `request_line` sama dengan `"GET / HTTP/1.1"`, yang berarti client meminta halaman utama (`/`). Jika ya, maka `status_line` diatur ke`"HTTP/1.1 200 OK"` dan `path_resource` diatur ke "hello.html". Jika tidak, maka status_line diatur ke `"HTTP/1.1 404 NOT FOUND"` dan `path_resource` diatur ke `"404.html"`. Ini berarti bahwa jika client meminta sumber daya lain selain halaman utama, server akan merespons dengan status 404 dan halaman error 404.
+
+<img align="center" src="assets\images\commit3.png" alt="Commit 3 screen capture"/>
